@@ -1,8 +1,8 @@
 name: CI
 
-# Pull requests and manual runs only: on a private repository a macOS
-# minute counts ten times against the Actions quota.
 on:
+  push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -18,7 +18,7 @@ jobs:
       - name: Fetch veltrio-core
         run: ./scripts/fetch-core.sh
         env:
-          GH_TOKEN: ${{ secrets.CORE_RELEASES_TOKEN }}
+          GH_TOKEN: ${{ secrets.CORE_RELEASES_TOKEN || github.token }}
       # Everything below switches on once the app project (project.yml,
       # XcodeGen) is committed.
       - name: Generate the Xcode project
