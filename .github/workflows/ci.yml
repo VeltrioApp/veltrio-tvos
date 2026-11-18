@@ -1,0 +1,31 @@
+name: CI
+
+# Pull requests and manual runs only: on a private repository a macOS
+# minute counts ten times against the Actions quota.
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch veltrio-core
+        run: ./scripts/fetch-core.sh
+        env:
+          GH_TOKEN: ${{ secrets.CORE_RELEASES_TOKEN }}
+      # Everything below switches on once the app project (project.yml,
+      # XcodeGen) is committed.
+      - name: Generate the Xcode project
+        if: hashFiles('project.yml') != ''
+        run: brew install xcodegen && xcodegen generate
+      - name: Build and test
+        if: hashFiles('project.yml') != ''
+        run: |
+          xcodebuild -project Veltrio.xcodeproj -scheme Veltrio \
+            -destination "platform=tvOS Simulator,name=Apple TV" test

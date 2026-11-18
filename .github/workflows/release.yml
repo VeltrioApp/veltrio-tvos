@@ -1,0 +1,62 @@
+name: Release
+
+# Tag vX.Y.Z → archive, sign and upload to TestFlight.
+#
+# Organisation secrets: CORE_RELEASES_TOKEN, APPLE_DISTRIBUTION_P12 (base64),
+#   APPLE_DISTRIBUTION_PASSWORD, ASC_KEY_P8 (base64)
+# Organisation variables: APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  # hashFiles() isn't available in a job's `if`, so a cheap Linux job
+  # checks for the app project first.
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      project: ${{ steps.check.outputs.project }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: if test -f project.yml; then echo project=true; else echo project=false; fi >> "$GITHUB_OUTPUT"
+
+  testflight:
+    needs: detect
+    if: needs.detect.outputs.project == 'true'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/fetch-core.sh
+        env:
+          GH_TOKEN: ${{ secrets.CORE_RELEASES_TOKEN }}
+      - run: brew install xcodegen && xcodegen generate
+      - name: App Store Connect key
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.ASC_KEY_P8 }}" | base64 --decode \
+            > ~/.appstoreconnect/private_keys/AuthKey_${{ vars.ASC_KEY_ID }}.p8
+      - name: Archive (automatic signing through the API key)
+        run: |
+          xcodebuild -project Veltrio.xcodeproj -scheme Veltrio -configuration Release \
+            -destination "generic/platform=tvOS" -archivePath build/Veltrio.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ vars.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ vars.ASC_KEY_ID }} -authenticationKeyIssuerID ${{ vars.ASC_ISSUER_ID }} \
+            DEVELOPMENT_TEAM=${{ vars.APPLE_TEAM_ID }} archive
+      - name: Upload to TestFlight
+        run: |
+          cat > build/export.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>${{ vars.APPLE_TEAM_ID }}</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath build/Veltrio.xcarchive -exportOptionsPlist build/export.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ vars.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ vars.ASC_KEY_ID }} -authenticationKeyIssuerID ${{ vars.ASC_ISSUER_ID }}
