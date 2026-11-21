@@ -1,16 +1,62 @@
 name: Release
 
-# Tag vX.Y.Z → archive, sign and upload to TestFlight.
-#
-# Organisation secrets: CORE_RELEASES_TOKEN (optional), ASC_KEY_P8 (base64)
-# Organisation variables: APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID
+# Tag vX.Y.Z → unsigned .ipa attached to the GitHub Release (for Sideloadly /
+# Xcode) and optional TestFlight upload when APPLE_TEAM_ID and App Store
+# Connect credentials are configured.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - run: ./scripts/fetch-core.sh
+        env:
+          GH_TOKEN: ${{ secrets.CORE_RELEASES_TOKEN || github.token }}
+      - run: brew install xcodegen && xcodegen generate
+      - name: Version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then v="${GITHUB_REF_NAME#v}"; else v="0.0.1"; fi
+          echo "VERSION=$v" >> "$GITHUB_ENV"
+      - name: Build unsigned IPA
+        run: |
+          xcodebuild -project Veltrio.xcodeproj -scheme Veltrio -configuration Release \
+            -destination "generic/platform=tvOS" \
+            -derivedDataPath build/dd \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+          mkdir -p Payload
+          cp -R build/dd/Build/Products/Release-appletvos/Veltrio.app Payload/
+          zip -qr "Veltrio-tvOS.ipa" Payload
+          ls -lh Veltrio-tvOS.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Veltrio-tvOS-${{ env.VERSION }}
+          path: Veltrio-tvOS.ipa
+          retention-days: 7
+      - name: Publish
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" Veltrio-tvOS.ipa \
+            --title "Veltrio $GITHUB_REF_NAME (Apple TV)" \
+            --generate-notes
+
   testflight:
+    if: vars.APPLE_TEAM_ID != ''
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
