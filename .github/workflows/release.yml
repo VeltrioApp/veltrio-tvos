@@ -2,8 +2,7 @@ name: Release
 
 # Tag vX.Y.Z → archive, sign and upload to TestFlight.
 #
-# Organisation secrets: CORE_RELEASES_TOKEN (optional), APPLE_DISTRIBUTION_P12 (base64),
-#   APPLE_DISTRIBUTION_PASSWORD, ASC_KEY_P8 (base64)
+# Organisation secrets: CORE_RELEASES_TOKEN (optional), ASC_KEY_P8 (base64)
 # Organisation variables: APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID
 on:
   push:
@@ -11,23 +10,12 @@ on:
   workflow_dispatch:
 
 jobs:
-  # hashFiles() isn't available in a job's `if`, so a cheap Linux job
-  # checks for the app project first.
-  detect:
-    runs-on: ubuntu-latest
-    outputs:
-      project: ${{ steps.check.outputs.project }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: check
-        run: if test -f project.yml; then echo project=true; else echo project=false; fi >> "$GITHUB_OUTPUT"
-
   testflight:
-    needs: detect
-    if: needs.detect.outputs.project == 'true'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - run: ./scripts/fetch-core.sh
         env:
           GH_TOKEN: ${{ secrets.CORE_RELEASES_TOKEN || github.token }}
