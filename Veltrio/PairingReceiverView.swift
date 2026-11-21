@@ -22,6 +22,7 @@ struct PairingReceiverView: View {
                 .font(Theme.Font.body(16))
                 .foregroundStyle(Theme.Palette.textSecondary)
                 .frame(maxWidth: 1200, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
             Rule()
             Text("Code").eyebrow(Theme.Palette.accentText, tracking: 3)
             Text(spaced(receiver.code))
@@ -53,6 +54,7 @@ struct PairingReceiverView: View {
                 .font(Theme.Font.caption(12))
                 .foregroundStyle(Theme.Palette.textQuaternary)
                 .frame(maxWidth: 1300, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer()
             Button(receiver.result == nil ? "Close" : "Done") { dismiss() }
                 .buttonStyle(.plainRect)
