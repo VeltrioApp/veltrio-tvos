@@ -12,8 +12,10 @@ struct TVRootView: View {
     @State private var paths: [NavItem: NavigationPath] = [:]
     @State private var showSettings = false
     @State private var showPairing = false
+    @State private var showOnboarding = false
     @FocusState private var focusedRail: RailTarget?
     @Environment(AppStore.self) private var store
+    @Environment(WatchStore.self) private var watch
 
     private enum RailTarget: Hashable { case section(NavItem), pair, search, settings }
 
@@ -51,9 +53,45 @@ struct TVRootView: View {
             SettingsSheet().tint(Theme.Palette.accent).preferredColorScheme(.dark)
         }
         .fullScreenCover(isPresented: $showPairing) {
-            PairingReceiverView(onImported: reload).preferredColorScheme(.dark)
+            PairingReceiverView(onImported: {
+                UserPrefs.shared.hasCompletedOnboarding = true
+                showOnboarding = false
+                reload()
+            }).preferredColorScheme(.dark)
         }
-        .task { await debugLaunch() }
+        .fullScreenCover(isPresented: $showOnboarding) {
+            TVOnboardingView(
+                onPair: {
+                    showOnboarding = false
+                    showPairing = true
+                },
+                onFinish: {
+                    showOnboarding = false
+                }
+            )
+        }
+        .task {
+            await store.stremioAccount.syncOnLaunchIfNeeded(into: watch)
+            await debugLaunch()
+            if !UserPrefs.shared.hasCompletedOnboarding
+                && !UserDefaults.standard.bool(forKey: "veltrioSkipOnboarding")
+                && !showSettings && !showPairing {
+                let alreadyConfigured = !store.addons.isEmpty
+                    || !store.iptvPlaylists.isEmpty
+                    || store.jellyfin.isConnected
+                    || store.emby.isConnected
+                    || store.plex.isConnected
+                if alreadyConfigured {
+                    UserPrefs.shared.hasCompletedOnboarding = true
+                } else {
+                    showOnboarding = true
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .veltrioShowOnboarding)) { _ in
+            showSettings = false
+            showOnboarding = true
+        }
         .onReceive(NotificationCenter.default.publisher(for: .veltrioGoto)) { note in
             if let item = note.object as? NavItem { selection = item }
         }
