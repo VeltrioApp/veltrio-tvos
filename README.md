@@ -1,10 +1,24 @@
 # Veltrio for Apple TV
 
-Not started yet. This repository holds the CI/CD and the pinned
-[veltrio-core](https://github.com/VeltrioApp/veltrio-core) release the
-app will build on.
+SwiftUI, tvOS 18+, moved through with the Siri Remote's focus.
 
-**Planned stack:** SwiftUI with the focus engine, tvOS 16+.
+The app shares everything but its shell with the Mac and the iPhone: the
+`macos/` submodule (veltrio-macos) brings VeltrioKit (`macos/Shared`:
+services, player engine, theme, translations) and the screens
+(`macos/Veltrio/Views`). This repository adds:
+
+- `Veltrio/TVRootView.swift` — the rail on the left (sections, From a
+  phone, Search, Settings), as on Android TV;
+- `Veltrio/Player/MPVMetalView.swift` — libmpv drawn with Metal (MPVKit);
+- `Veltrio/PairingReceiver.swift` — "From a phone": receives a phone's or
+  a Mac's settings (addons, IPTV, debrid keys, accounts, media servers,
+  Collection) over the local network, encrypted, as the Android TV app
+  does.
+
+Build: `./scripts/fetch-core.sh && xcodegen generate`, then open
+`Veltrio.xcodeproj`. Debug builds take `-veltrioTab`, `-veltrioDetail`,
+`-veltrioPlay`, `-veltrioSettings`, `-veltrioPair` to open a screen in
+the simulator.
 
 ## The core
 

@@ -1,0 +1,55 @@
+name: Veltrio
+options:
+  bundleIdPrefix: com.veltrio
+  deploymentTarget:
+    tvOS: "18.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+
+packages:
+  MPVKit:
+    url: https://github.com/mpvkit/MPVKit
+    exactVersion: 1.1.0-n9.0.2
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    VELTRIO_SIMKL_CLIENT_ID: ""
+
+targets:
+  Veltrio:
+    type: application
+    platform: tvOS
+    sources:
+      - path: Veltrio
+      # VeltrioKit, from the macOS repository (a submodule in macos/): the
+      # services, the player engine, the theme and the translations. The
+      # TV draws its own screens (Veltrio/), made for the remote.
+      - path: macos/Shared
+      # The shared screens, as on the iPhone; the TV has its own shell
+      # (Veltrio/TVRootView.swift) and video surface (Veltrio/Player).
+      - path: macos/Veltrio/Views
+        excludes: [MPVPlayer.swift]
+      - path: Core/Bindings/veltrio.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.veltrio.tv
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Veltrio/Info.plist
+        INFOPLIST_KEY_CFBundleDisplayName: Veltrio
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Veltrio reçoit les réglages de votre téléphone et cherche les serveurs multimédias sur votre réseau local."
+        SWIFT_INCLUDE_PATHS: $(SRCROOT)/Core/Bindings
+    dependencies:
+      - package: MPVKit
+        product: MPVKit
+      # The Rust core: a dynamic framework, embedded and signed.
+      - framework: Core/veltrioFFI.xcframework
+        embed: true
+        codeSign: true
+      - sdk: SystemConfiguration.framework
+      - sdk: Security.framework

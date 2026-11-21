@@ -1,0 +1,3 @@
+[submodule "macos"]
+	path = macos
+	url = https://github.com/VeltrioApp/veltrio-macos.git

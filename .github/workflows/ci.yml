@@ -15,6 +15,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: Fetch veltrio-core
         run: ./scripts/fetch-core.sh
         env:
@@ -24,8 +26,8 @@ jobs:
       - name: Generate the Xcode project
         if: hashFiles('project.yml') != ''
         run: brew install xcodegen && xcodegen generate
-      - name: Build and test
+      - name: Build
         if: hashFiles('project.yml') != ''
         run: |
           xcodebuild -project Veltrio.xcodeproj -scheme Veltrio \
-            -destination "platform=tvOS Simulator,name=Apple TV" test
+            -destination "generic/platform=tvOS Simulator" build CODE_SIGNING_ALLOWED=NO
