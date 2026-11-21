@@ -53,3 +53,23 @@ targets:
         codeSign: true
       - sdk: SystemConfiguration.framework
       - sdk: Security.framework
+
+  VeltrioUITests:
+    type: bundle.ui-testing
+    platform: tvOS
+    sources: [UITests]
+    dependencies:
+      - target: Veltrio
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.veltrio.tv.uitests
+        TEST_TARGET_NAME: Veltrio
+
+schemes:
+  Veltrio:
+    build:
+      targets:
+        Veltrio: all
+    test:
+      targets: [VeltrioUITests]

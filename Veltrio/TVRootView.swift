@@ -39,6 +39,9 @@ struct TVRootView: View {
                     .destinations()
             }
             .id(selection)
+            // Its own focus section: right from anywhere in the rail lands
+            // in the page, even when nothing sits exactly level with it.
+            .focusSection()
         }
         .animation(.easeOut(duration: 0.2), value: showsRail)
         .background(Theme.Palette.background.ignoresSafeArea())
@@ -100,6 +103,9 @@ struct TVRootView: View {
         .frame(maxHeight: .infinity)
         .background(Theme.Palette.backgroundAlt.ignoresSafeArea())
         .focusSection()
+        // Coming back from the page, the focus lands on the open section,
+        // not on whatever sits level with the button left behind.
+        .defaultFocus($focusedRail, .section(selection), priority: .userInitiated)
         .onAppear { if focusedRail == nil { focusedRail = .section(selection) } }
     }
 
