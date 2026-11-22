@@ -222,6 +222,7 @@ enum PairingImport {
         "stremio.authkey": "com.veltrio.stremio.authkey", "trakt.token": "com.veltrio.trakt.token",
         "simkl.token": "com.veltrio.simkl.token", "mediaserver.jellyfin": "com.veltrio.jellyfin.token",
         "mediaserver.emby": "com.veltrio.emby.token", "mediaserver.plex": "com.veltrio.plex.token",
+        "tmdb.key": TmdbService.keyService, "tmdb.lang": TmdbService.langService,
     ]
 
     static func apply(_ bundle: [String: Any], store: AppStore, watch: WatchStore) async -> String {
@@ -264,6 +265,7 @@ enum PairingImport {
                 accounts.insert(name.hasPrefix("mediaserver.") ? name : String(name.prefix { $0 != "." }))
             }
         }
+        TmdbService.shared.reload()
         if let email = (bundle["secrets"] as? [String: String])?["stremio.email"], defaults.string(forKey: "veltrio.stremio.email") == nil {
             defaults.set(email, forKey: "veltrio.stremio.email")
         }
