@@ -269,6 +269,10 @@ enum PairingImport {
         if let appLang = bundle["appLanguage"] as? String, !appLang.isEmpty {
             UserPrefs.shared.appLanguage = appLang
         }
+        store.mergeIptvFavoritesAndHidden(
+            favorites: bundle["iptvFavorites"] as? [String] ?? [],
+            hiddenGroups: bundle["iptvHiddenGroups"] as? [String] ?? []
+        )
         if let email = (bundle["secrets"] as? [String: String])?["stremio.email"], defaults.string(forKey: "veltrio.stremio.email") == nil {
             defaults.set(email, forKey: "veltrio.stremio.email")
         }
