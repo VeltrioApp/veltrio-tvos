@@ -269,6 +269,12 @@ enum PairingImport {
         if let appLang = bundle["appLanguage"] as? String, !appLang.isEmpty {
             UserPrefs.shared.appLanguage = appLang
         }
+        if let kidsMode = bundle["kidsMode"] as? Bool {
+            UserPrefs.shared.kidsMode = kidsMode
+        }
+        if let kidsPin = bundle["kidsPin"] as? String, !kidsPin.isEmpty {
+            UserPrefs.shared.kidsPin = kidsPin
+        }
         store.mergeIptvFavoritesAndHidden(
             favorites: bundle["iptvFavorites"] as? [String] ?? [],
             hiddenGroups: bundle["iptvHiddenGroups"] as? [String] ?? []
