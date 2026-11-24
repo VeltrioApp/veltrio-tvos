@@ -259,10 +259,12 @@ enum PairingImport {
         // Accounts and keys: what isn't set here yet.
         var accounts = Set<String>()
         for (name, value) in bundle["secrets"] as? [String: String] ?? [:] {
-            if let service = keychain[name], Keychain.get(service: service) == nil {
-                _ = Keychain.set(value, service: service)
-                // A media server per kind; otherwise the service ("debrid", "trakt"…).
-                accounts.insert(name.hasPrefix("mediaserver.") ? name : String(name.prefix { $0 != "." }))
+            guard !value.isEmpty else { continue }
+            if let service = keychain[name], (Keychain.get(service: service)?.isEmpty ?? true) {
+                if Keychain.set(value, service: service) {
+                    // A media server per kind; otherwise the service ("debrid", "trakt"…).
+                    accounts.insert(name.hasPrefix("mediaserver.") ? name : String(name.prefix { $0 != "." }))
+                }
             }
         }
         TmdbService.shared.reload()
