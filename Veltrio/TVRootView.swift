@@ -26,13 +26,12 @@ struct TVRootView: View {
     /// The rail hides while a page is pushed (a title, the player), as the
     /// tab bar does on a phone.
     private var showsRail: Bool { path(selection).wrappedValue.isEmpty }
+    private var railExpanded: Bool { focusedRail != nil }
+    private let collapsedRailWidth: CGFloat = 88
+    private let expandedRailWidth: CGFloat = 320
 
     var body: some View {
-        HStack(spacing: 0) {
-            if showsRail {
-                rail
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-            }
+        ZStack(alignment: .leading) {
             NavigationStack(path: path(selection)) {
                 section(selection)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -41,11 +40,24 @@ struct TVRootView: View {
                     .destinations()
             }
             .id(selection)
+            .padding(.leading, showsRail ? collapsedRailWidth : 0)
             // Its own focus section: right from anywhere in the rail lands
             // in the page, even when nothing sits exactly level with it.
             .focusSection()
+
+            if showsRail {
+                if railExpanded {
+                    Color.black.opacity(0.45)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                        .transition(.opacity)
+                }
+                rail
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
         }
-        .animation(.easeOut(duration: 0.2), value: showsRail)
+        .animation(.easeOut(duration: 0.22), value: showsRail)
+        .animation(.easeOut(duration: 0.22), value: railExpanded)
         .background(Theme.Palette.background.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .tint(Theme.Palette.accent)
@@ -113,38 +125,76 @@ struct TVRootView: View {
     // MARK: - rail
 
     private var rail: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Veltrio")
-                .font(Theme.Font.displaySerif(30, weight: .bold))
-                .foregroundStyle(Theme.Palette.textPrimary)
-                .padding(.leading, 28)
-                .padding(.bottom, 40)
+        VStack(alignment: .leading, spacing: 8) {
+            // Wordmark when expanded, crisp "V" monogram when collapsed
+            HStack(spacing: 0) {
+                if railExpanded {
+                    Text("Veltrio")
+                        .font(Theme.Font.displaySerif(30, weight: .bold))
+                        .foregroundStyle(Theme.Palette.textPrimary)
+                        .padding(.leading, 28)
+                        .transition(.opacity)
+                } else {
+                    Text("V")
+                        .font(Theme.Font.displaySerif(32, weight: .bold))
+                        .foregroundStyle(Theme.Palette.accent)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .transition(.opacity)
+                }
+            }
+            .frame(height: 40)
+            .padding(.bottom, 34)
+
             ForEach(NavItem.allCases) { item in
-                RailButton(number: String(format: "%02d", item.index), label: item.rawValue,
-                           isActive: selection == item) { selection = item }
+                RailButton(
+                    number: String(format: "%02d", item.index),
+                    icon: item.icon,
+                    label: item.rawValue,
+                    isActive: selection == item,
+                    expanded: railExpanded
+                ) { selection = item }
                     .focused($focusedRail, equals: .section(item))
             }
+
             Spacer()
+
+            // Subtle divider above utility items
+            Rectangle()
+                .fill(Theme.Palette.border)
+                .frame(height: 1)
+                .padding(.horizontal, railExpanded ? 24 : 20)
+                .padding(.bottom, 8)
+
             // Setting a TV up with a remote is tedious: a phone's settings,
             // one step away.
-            RailButton(icon: "iphone", label: "From a phone") { showPairing = true }
+            RailButton(icon: "iphone", label: "From a phone", expanded: railExpanded) { showPairing = true }
                 .focused($focusedRail, equals: .pair)
-            RailButton(icon: "magnifyingglass", label: "Search") {
+            RailButton(icon: "magnifyingglass", label: "Search", expanded: railExpanded) {
                 path(selection).wrappedValue.append(SearchDestination())
             }
             .focused($focusedRail, equals: .search)
-            RailButton(icon: "gearshape", label: "Settings") { showSettings = true }
+            RailButton(icon: "gearshape", label: "Settings", expanded: railExpanded) { showSettings = true }
                 .focused($focusedRail, equals: .settings)
         }
-        .padding(.vertical, 50)
-        .frame(width: 340)
+        .padding(.vertical, 48)
+        .frame(width: railExpanded ? expandedRailWidth : collapsedRailWidth)
         .frame(maxHeight: .infinity)
-        .background(Theme.Palette.backgroundAlt.ignoresSafeArea())
+        .background {
+            ZStack(alignment: .trailing) {
+                Theme.Palette.backgroundAlt
+                    .opacity(railExpanded ? 0.97 : 0.92)
+                    .ignoresSafeArea()
+                Rectangle()
+                    .fill(Theme.Palette.border.opacity(railExpanded ? 0.9 : 0.5))
+                    .frame(width: 1)
+                    .ignoresSafeArea()
+            }
+        }
+        .shadow(color: .black.opacity(railExpanded ? 0.55 : 0), radius: 28, x: 10, y: 0)
         .focusSection()
         // Coming back from the page, the focus lands on the open section,
         // not on whatever sits level with the button left behind.
         .defaultFocus($focusedRail, .section(selection), priority: .userInitiated)
-        .onAppear { if focusedRail == nil { focusedRail = .section(selection) } }
     }
 
     @ViewBuilder
@@ -185,40 +235,52 @@ struct TVRootView: View {
     }
 }
 
-/// One line of the rail: a numbered section, or an icon and a label.
+/// One line of the rail: compact icon when collapsed, icon + number + label when expanded.
 private struct RailButton: View {
     var number: String? = nil
     var icon: String? = nil
     let label: String
     var isActive = false
+    var expanded = true
     let action: () -> Void
     @Environment(\.isFocused) private var isFocused
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 14) {
-                Rectangle()
+            HStack(spacing: expanded ? 14 : 0) {
+                RoundedRectangle(cornerRadius: 2)
                     .fill(isActive ? Theme.Palette.accent : .clear)
-                    .frame(width: 4, height: 26)
-                if let number {
-                    Text(number).font(Theme.Font.mono(12, weight: .semibold)).foregroundStyle(Theme.Palette.accentText)
-                }
+                    .frame(width: 3.5, height: 26)
                 if let icon {
-                    Image(systemName: icon).font(.system(size: 22, weight: .medium)).frame(width: 30)
-                        .foregroundStyle(Theme.Palette.textSecondary)
+                    Image(systemName: icon)
+                        .font(.system(size: 21, weight: isActive ? .semibold : .medium))
+                        .frame(width: expanded ? 30 : 48)
+                        .foregroundStyle(isActive ? Theme.Palette.accent : (isFocused ? Theme.Palette.textPrimary : Theme.Palette.textSecondary))
                 }
-                Text(label.localized.uppercased())
-                    .font(Theme.Font.eyebrow(number != nil ? 13 : 11, weight: .bold))
-                    .tracking(2.4)
-                    .foregroundStyle(isActive ? Theme.Palette.textPrimary : Theme.Palette.textTertiary)
-                Spacer(minLength: 0)
+                if expanded {
+                    if let number {
+                        Text(number)
+                            .font(Theme.Font.mono(12, weight: .semibold))
+                            .foregroundStyle(Theme.Palette.accentText)
+                    }
+                    Text(label.localized.uppercased())
+                        .font(Theme.Font.eyebrow(number != nil ? 13 : 11, weight: .bold))
+                        .tracking(2.2)
+                        .foregroundStyle(isActive || isFocused ? Theme.Palette.textPrimary : Theme.Palette.textTertiary)
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
             }
             .padding(.vertical, 12)
-            .padding(.trailing, 20)
+            .padding(.trailing, expanded ? 18 : 0)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(isActive && !expanded ? Theme.Palette.accent.opacity(0.12) : .clear)
+            )
         }
         .buttonStyle(.plainRect)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, expanded ? 12 : 10)
     }
 }
 
