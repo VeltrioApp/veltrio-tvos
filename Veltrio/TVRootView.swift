@@ -239,5 +239,7 @@ private extension View {
             .navigationDestination(for: IptvSeriesDestination.self) { IptvSeriesView(destination: $0) }
             .navigationDestination(for: SearchDestination.self) { _ in SearchView() }
             .navigationDestination(for: CatalogDestination.self) { CatalogGridView(destination: $0) }
+            .navigationDestination(for: ProviderDestination.self) { ProviderHubView(provider: $0.provider) }
+            .navigationDestination(for: GenreDestination.self) { GenreHubView(genre: $0.genre) }
     }
 }
