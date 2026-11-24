@@ -28,10 +28,14 @@ struct TVRootView: View {
     private var showsRail: Bool { path(selection).wrappedValue.isEmpty }
     private var railExpanded: Bool { focusedRail != nil }
     private let collapsedRailWidth: CGFloat = 88
-    private let expandedRailWidth: CGFloat = 320
+    private let expandedRailWidth: CGFloat = 300
 
     var body: some View {
-        ZStack(alignment: .leading) {
+        HStack(spacing: 0) {
+            if showsRail {
+                rail
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
             NavigationStack(path: path(selection)) {
                 section(selection)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -40,21 +44,9 @@ struct TVRootView: View {
                     .destinations()
             }
             .id(selection)
-            .padding(.leading, showsRail ? collapsedRailWidth : 0)
             // Its own focus section: right from anywhere in the rail lands
             // in the page, even when nothing sits exactly level with it.
             .focusSection()
-
-            if showsRail {
-                if railExpanded {
-                    Color.black.opacity(0.45)
-                        .ignoresSafeArea()
-                        .allowsHitTesting(false)
-                        .transition(.opacity)
-                }
-                rail
-                    .transition(.move(edge: .leading).combined(with: .opacity))
-            }
         }
         .animation(.easeOut(duration: 0.22), value: showsRail)
         .animation(.easeOut(duration: 0.22), value: railExpanded)
